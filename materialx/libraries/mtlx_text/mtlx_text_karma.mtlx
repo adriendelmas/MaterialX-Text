@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<materialx version="1.39">
+  <!-- Karma's ST Derivatives node, which Karma implements natively (it has no
+       MaterialX definition in Houdini 22.0). Declared here so that the
+       MtlX Text nodegraph validates and mtlx2karma.py can write it; the
+       output order is Karma's (derivS, derivT, derivScale). Other renderers
+       have no such node: MtlX Text then falls back to its Edge Softness. -->
+  <nodedef name="kma_stderiv_vector2" node="kma_stderiv" nodegroup="karma">
+    <input name="input" type="vector2" value="0, 0" />
+    <output name="derivS" type="vector2" />
+    <output name="derivT" type="vector2" />
+    <output name="derivScale" type="float" />
+  </nodedef>
+</materialx>

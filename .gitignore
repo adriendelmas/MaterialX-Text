@@ -1,0 +1,19 @@
+# built locally with your own Houdini licence: hython build.py
+otls/
+
+# caches and generated data
+__pycache__/
+*.pyc
+*.rat
+*.tmp.exr
+tex/
+backup/
+
+# examples: generated from a font of your own
+examples/*.hip
+examples/*.hip*
+examples/preview.png
+examples/minimal/*.exr
+examples/minimal/*.json
+examples/minimal/*.png
+examples/minimal/marking.mtlx

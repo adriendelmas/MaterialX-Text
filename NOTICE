@@ -1,0 +1,21 @@
+MaterialX Text
+Copyright 2026 Adrien Delmas
+
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+This product includes or builds on the work of others:
+
+* python3.13libs/mtlx_text/_fonttools_head.py is copied unchanged from
+  fontTools 4.55.4 (https://github.com/fonttools/fonttools), MIT License,
+  see licenses/fontTools-LICENSE.txt. fontTools itself ships with Houdini.
+
+* python3.13libs/mtlx_text/msdf.py reimplements, in numpy, the multi-channel
+  signed distance field method of msdfgen by Viktor Chlumsky
+  (https://github.com/Chlumsky/msdfgen, MIT License): edge colouring,
+  pseudo-distances and error correction. No msdfgen code is included.
+
+* The nodegraph uses Karma's ST Derivatives node (kma_stderiv), part of
+  SideFX Houdini, for antialiasing.
+
+No font and no atlas baked from a font is distributed: bake atlases from font
+files whose licence allows it.
