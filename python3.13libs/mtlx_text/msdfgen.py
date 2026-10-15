@@ -5,8 +5,9 @@ It gets the glyph's contours as read by fontTools (a text shape description),
 so the geometry is the numpy backend's, and samples the same pixel centres:
 msdfgen evaluates pixel (i, j) at ((i + 0.5) / scale - tx, (j + 0.5) / scale - ty).
 Its output, normalised to 0..1 over a range of 2 * rng em, is mapped back to
-signed em, clamped to +-rng; beyond FAR_TEXELS from the outline every channel
-takes the true distance, as in msdf.mtsdf. Orders of magnitude faster than
+signed em, then goes through the numpy baker's corrections (msdf.finish):
+the median follows the true inside / outside, no neighbour clash, the true
+distance beyond FAR_TEXELS, clamped to +-rng. Orders of magnitude faster than
 numpy on large or complex glyphs.
 
 Selection: MTLX_TEXT_MSDF = auto (default: msdfgen when found, else numpy),
@@ -82,10 +83,8 @@ def _glyph(exe, contours, cell_px, px_per_em, tx, ty, rng, workdir, k):
                    check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
     v = np.fromfile(dst, dtype="<f4").reshape(cell_px, cell_px, 4)    # rows from the bottom
     d = (v - 0.5) * (2.0 * rng)
-    far = np.abs(d[..., 3]) > msdf.FAR_TEXELS / float(px_per_em)
-    d[far, :3] = d[far, 3:4]
-    np.clip(d, -rng, rng, out=d)
-    return d.astype(np.float32)
+    # the numpy baker's corrections, so both backends write one contract
+    return msdf.finish(d.astype(np.float64), 1.0 / float(px_per_em), rng).astype(np.float32)
 
 
 def fields(glyphs, cell_px, px_per_em, cell, baseline, rng):

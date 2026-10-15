@@ -280,14 +280,25 @@ def mtsdf(contours, xs, ys, rng, chunk=4096):
     if agree * 2 < clear.sum():
         res[:, :3] *= -1.0
         med = -med
+    res = finish(res.reshape(h, w, 4),
+                 min(abs(xs[1] - xs[0]) if w > 1 else 1.0, abs(ys[1] - ys[0]) if h > 1 else 1.0), rng)
+    out[:] = res.astype(np.float32)
+    return out
+
+
+def finish(res, texel, rng):
+    """Error corrections shared by both bakers, on an (h, w, 4) field (RGB
+    multi-channel, A true distance): the median follows the true inside /
+    outside, neighbouring texels do not clash, far texels hold the true
+    distance; clamped to +-rng."""
+    med = _median3(res[..., 0], res[..., 1], res[..., 2])
+    sd = res[..., 3]
     # error correction 1: a median on the wrong side of the outline
     bad = np.sign(med) != np.sign(sd)
     res[bad, :3] = sd[bad, None]
-    res = res.reshape(h, w, 4)
     # error correction 2: channel clashes that bilinear filtering would turn
     # into a wrong-side midpoint between two neighbouring texels
-    texel = min(abs(xs[1] - xs[0]) if w > 1 else 1.0, abs(ys[1] - ys[0]) if h > 1 else 1.0)
-    fix = np.zeros((h, w), dtype=bool)
+    fix = np.zeros(res.shape[:2], dtype=bool)
     for sl_a, sl_b in (((slice(None), slice(0, -1)), (slice(None), slice(1, None))),
                        ((slice(0, -1), slice(None)), (slice(1, None), slice(None)))):
         A_, B_ = res[sl_a], res[sl_b]
@@ -304,8 +315,7 @@ def mtsdf(contours, xs, ys, rng, chunk=4096):
     far = np.abs(res[..., 3]) > FAR_TEXELS * texel
     res[far, :3] = res[far, 3:4]
     np.clip(res, -rng, rng, out=res)
-    out[:] = res.astype(np.float32)
-    return out
+    return res
 
 
 def median(rgb):

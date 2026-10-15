@@ -24,7 +24,11 @@ same.
    fontTools reads, about 25x faster and light on memory; and a numpy
    reimplementation (`mtlx_text.msdf`), used when msdfgen is not found.
    Measured on Microsoft Himalaya, 207 glyphs at 48 px/em: 26.5 s against
-   1.0 s, medians 0.001 texel apart on average (2026-10-15).
+   1.0 s, medians 0.001 texel apart on average (2026-10-15). Both go
+   through the same error corrections (`msdf.finish`). On strokes thinner
+   than a texel (traced glyphs) a texel centre falls inside or outside
+   almost by chance and the two bakers disagree on a few percent of those
+   texels, each about as often wrong as the other: raise Quality there.
 2. **Layout** (on the CPU, `mtlx_text.layout`, one implementation for the
    node, the LOP and the SOP): advances, pair kerning, tracking, wrapping to
    a width at spaces, left / center / right / justify, font fallback (a
