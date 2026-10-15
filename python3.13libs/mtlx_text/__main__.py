@@ -2,7 +2,7 @@
 
   bake   bake the atlas of a font set (for a farm, or ahead of a session)
          hython -m mtlx_text bake --font a.ttf --font b.otf#1 [--charset western ...]
-                [--custom "..."] [--quality 48] [--out path.exr]
+                [--custom "..."] [--quality 48] [--out path.exr] [--backend auto|numpy|msdfgen]
          Without --out the atlas goes where the node would put it
          ($MTLX_TEXT_CACHE, else ~/.mtlx_text outside a Houdini session),
          so a node with the same fonts and settings finds it.
@@ -35,6 +35,8 @@ def main(argv=None):
     b.add_argument("--custom", default="", help="extra characters")
     b.add_argument("--quality", type=int, default=48, choices=(32, 48, 64, 96, 128, 192), help="pixels per em")
     b.add_argument("--out", help="atlas path (.exr); default: the cache path the node uses")
+    b.add_argument("--backend", choices=("auto", "numpy", "msdfgen"), default=None,
+                   help="distance field generator (default: MTLX_TEXT_MSDF, else auto: msdfgen when found)")
     sub.add_parser("fonts", help="list the installed fonts")
     t = sub.add_parser("table", help="lay texts out into a text table (prints the node's input values)")
     t.add_argument("--atlas", required=True, help="a baked atlas (.exr)")
@@ -65,7 +67,8 @@ def main(argv=None):
         return 0
     if a.cmd == "bake":
         charsets = tuple(a.charset or ("western",))
-        out = atlas.bake(a.font, charsets=charsets, custom=a.custom, px_per_em=a.quality, out=a.out)
+        out = atlas.bake(a.font, charsets=charsets, custom=a.custom, px_per_em=a.quality, out=a.out,
+                         backend=a.backend)
         print(out)
     elif a.cmd == "fonts":
         for ref, fam, sty in fonts.scan_fonts():

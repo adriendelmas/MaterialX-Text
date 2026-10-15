@@ -21,7 +21,9 @@ nodes.*
   tracking, word wrapping to a width, left / center / right / justify, font
   fallback across a list of fonts.
 - **Sharp at any size**: multi-channel signed distance fields (MSDF) keep the
-  corners; pixel-footprint antialiasing in Karma.
+  corners; pixel-footprint antialiasing in Karma. Atlases are baked by
+  [msdfgen](https://github.com/Chlumsky/msdfgen) (bundled for Windows), or
+  by a numpy fallback when it is not there.
 - **Overlapping letters**: up to four glyphs per 1/8 em along a line and
   overlapping lines, for negative tracking and tight leading.
 - **Per letter**: outputs `character_id`, `word_id`, `line_id`, `glyph_uv`
@@ -40,31 +42,42 @@ nodes.*
   [cycles-for-houdini](https://github.com/adriendelmas/cycles-for-houdini)
   (patches 0137 and 0139).
 - Font files of your own (`.ttf`, `.otf`, `.ttc`). No font is distributed.
+- Optional on Linux / macOS: a `msdfgen` executable on `PATH` (or set
+  `MTLX_TEXT_MSDFGEN`) for fast bakes; without it the numpy baker is used.
 
 ## Install
 
-```bash
-git clone https://github.com/adriendelmas/MaterialX-Text.git
-```
+1. Clone the repository anywhere:
 
-Point Houdini at the package file `packages/mtlx_text.json`, either with the
-environment variable `HOUDINI_PACKAGE_DIR=<clone>/packages`, or with a package
-file of your own in `$HOUDINI_USER_PREF_DIR/packages/`:
+   ```bash
+   git clone https://github.com/adriendelmas/MaterialX-Text.git
+   ```
 
-```json
-{ "package_path": "<clone>/packages" }
-```
+2. Tell Houdini where the package is: add a package file of your own,
+   `$HOUDINI_USER_PREF_DIR/packages/materialx_text.json` (for example
+   `Documents/houdini22.0/packages/` on Windows), holding
 
-Then build the HDAs once, with your own Houdini licence:
+   ```json
+   { "package_path": "<path to the clone>/packages" }
+   ```
 
-```bash
-hython <clone>/build.py
-```
+   or set the environment variable `HOUDINI_PACKAGE_DIR` to that `packages`
+   folder.
+
+3. Build the nodes once, with your own Houdini licence (the HDAs are not in
+   the repository, so they match your licence):
+
+   ```bash
+   hython <path to the clone>/build.py
+   ```
+
+Start Houdini and type *MtlX Text* in the Tab menu of a material network, or
+*MtlX Text Layout* in LOPs or SOPs.
 
 ## Use
 
-1. In a Material Library or a MaterialX builder, add **MtlX Text** (MaterialX >
-   Texture 2D). A new node starts with the system's default font.
+1. In a Material Library or a MaterialX builder, add **MtlX Text**. A new node
+   starts with the system's default font; pick yours on the *Fonts* tab.
 2. Type in the *Text* box. Set the font, alignment, width and tracking on the
    same tab, and the placement in uv (origin, size in uv per em, aspect).
 3. Wire `color` into a surface's base colour, or `mask` anywhere a float goes.
@@ -87,7 +100,7 @@ hython -m mtlx_text fonts
 
 [docs/METHOD.md](docs/METHOD.md) is the reference: how it works, the data
 contract for an HDA that drives it, every input and output, the limits.
-[docs/PLAN.md](docs/PLAN.md) records the measurements behind the design.
+[docs/DESIGN.md](docs/DESIGN.md) records the measurements behind the design.
 
 ## Limits
 

@@ -18,6 +18,7 @@ import numpy as np
 
 from . import fonts as fontmod
 from . import msdf
+from . import msdfgen
 
 FORMAT = 6
 GUTTER = 2                  # texels of "far outside" around every cell
@@ -71,8 +72,10 @@ def cache_dir():
         return os.path.join(os.path.expanduser("~"), ".mtlx_text")
 
 
-def atlas_key(font_refs, charsets, custom, px_per_em, rng):
+def atlas_key(font_refs, charsets, custom, px_per_em, rng, backend="numpy"):
     parts = [str(FORMAT), ",".join(charsets), custom, str(px_per_em), str(rng)]
+    if backend != "numpy":          # numpy keys unchanged: existing atlases stay valid
+        parts.append(backend)
     for ref in font_refs:
         path, _ = fontmod.split_ref(ref)
         st = os.stat(path)
@@ -80,12 +83,13 @@ def atlas_key(font_refs, charsets, custom, px_per_em, rng):
     return hashlib.md5("\n".join(parts).encode("utf-8")).hexdigest()[:10]
 
 
-def atlas_path(font_refs, charsets=("western",), custom="", px_per_em=48, rng=0.25, directory=None):
-    """Path of the atlas EXR for this font set; the JSON is the same path with .json."""
+def atlas_path(font_refs, charsets=("western",), custom="", px_per_em=48, rng=0.25, directory=None, backend=None):
+    """Path of the atlas EXR for this font set; the JSON is the same path with .json.
+    backend: numpy or msdfgen (default: msdfgen.backend(), from MTLX_TEXT_MSDF)."""
     name = os.path.splitext(os.path.basename(fontmod.split_ref(font_refs[0])[0]))[0]
     if len(font_refs) > 1:
         name += "_and_%d" % (len(font_refs) - 1)
-    key = atlas_key(font_refs, charsets, custom, px_per_em, rng)
+    key = atlas_key(font_refs, charsets, custom, px_per_em, rng, msdfgen.backend(backend))
     return os.path.join(directory or cache_dir(), "%s_%s.exr" % (name, key)).replace("\\", "/")
 
 
@@ -100,10 +104,12 @@ def sdf_path(exr):
     return os.path.splitext(exr)[0] + "_sdf.exr"
 
 
-def bake(font_refs, charsets=("western",), custom="", px_per_em=48, rng=0.25, out=None, log=print):
+def bake(font_refs, charsets=("western",), custom="", px_per_em=48, rng=0.25, out=None, log=print, backend=None):
     """Build the atlas of a font set (if its files are missing) and return the
-    EXR path. `out` overrides the cache location."""
-    out = out or atlas_path(font_refs, charsets, custom, px_per_em, rng)
+    EXR path. `out` overrides the cache location; backend: numpy or msdfgen
+    (default: msdfgen.backend(), from MTLX_TEXT_MSDF)."""
+    backend = msdfgen.backend(backend)
+    out = out or atlas_path(font_refs, charsets, custom, px_per_em, rng, backend=backend)
     if all(os.path.isfile(p) for p in (out, sdf_path(out), metrics_path(out))):
         return out
     t0 = time.time()
@@ -139,10 +145,14 @@ def bake(font_refs, charsets=("western",), custom="", px_per_em=48, rng=0.25, ou
     meta_fonts = [{"ref": f.ref, "family": f.family, "style": f.style,
                    "ascender": f.ascender, "descender": f.descender, "glyphs": {}, "kern": []}
                   for f in fl]
+    native = msdfgen.fields(glyphs, cell_px, px_per_em, cell, baseline, rng) if backend == "msdfgen" else None
     for g, (fi, cp, adv, c) in enumerate(glyphs):
-        xs = ts - cell / 2 + adv / 2
-        ys = ts - baseline
-        field = msdf.mtsdf(c, xs, ys, rng)              # rows from the bottom
+        if native is not None:
+            field = native[g]
+        else:
+            xs = ts - cell / 2 + adv / 2
+            ys = ts - baseline
+            field = msdf.mtsdf(c, xs, ys, rng)          # rows from the bottom
         # a gutter of "far outside" in every channel: bilinear filtering (and
         # the first mip levels) at a cell's edge mixes in the neighbour cell,
         # and a mix of multi-channel values can have a positive median,
@@ -164,14 +174,15 @@ def bake(font_refs, charsets=("western",), custom="", px_per_em=48, rng=0.25, ou
     os.makedirs(os.path.dirname(out) or ".", exist_ok=True)
     _write_exr(np.ascontiguousarray(atlas[..., :3]), out)
     _write_exr(np.ascontiguousarray(atlas[..., 3:4]), sdf_path(out))
-    meta = {"format": FORMAT, "atlas": os.path.basename(out), "px_per_em": px_per_em,
+    meta = {"format": FORMAT, "atlas": os.path.basename(out), "px_per_em": px_per_em, "backend": backend,
             "range": rng, "cell": cell, "cell_px": cell_px, "baseline": baseline,
             "cols": cols, "rows": rows, "glyph_count": len(glyphs),
             "ascender": max(f.ascender for f in fl), "descender": min(f.descender for f in fl),
             "charsets": list(charsets), "custom": custom, "fonts": meta_fonts}
     with open(metrics_path(out), "w", encoding="utf-8") as fh:
         json.dump(meta, fh)
-    log("mtlx_text: baked %d glyphs of %d font(s) in %.1f s -> %s" % (len(glyphs), len(fl), time.time() - t0, out))
+    log("mtlx_text: baked %d glyphs of %d font(s) in %.1f s (%s) -> %s"
+        % (len(glyphs), len(fl), time.time() - t0, backend, out))
     return out
 
 

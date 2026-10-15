@@ -8,7 +8,7 @@
 3. Runs SideFX's mtlx2hda.py -> otls/mtlx_text.hda, then lays out the HDA's
    interface (python3.13libs/mtlx_text/hda.py).
 
-See docs/METHOD.md for what the graph computes and docs/PLAN.md for why.
+See docs/METHOD.md for what the graph computes and docs/DESIGN.md for why.
 """
 import math
 import os

@@ -9,10 +9,15 @@ This product includes or builds on the work of others:
   fontTools 4.55.4 (https://github.com/fonttools/fonttools), MIT License,
   see licenses/fontTools-LICENSE.txt. fontTools itself ships with Houdini.
 
+* bin/msdfgen.exe is msdfgen 1.13 (Windows x64 release) by Viktor Chlumsky,
+  https://github.com/Chlumsky/msdfgen, MIT License, see
+  licenses/msdfgen-LICENSE.txt. It is the optional native atlas baker
+  (python3.13libs/mtlx_text/msdfgen.py); without it the numpy baker is used.
+
 * python3.13libs/mtlx_text/msdf.py reimplements, in numpy, the multi-channel
   signed distance field method of msdfgen by Viktor Chlumsky
   (https://github.com/Chlumsky/msdfgen, MIT License): edge colouring,
-  pseudo-distances and error correction. No msdfgen code is included.
+  pseudo-distances and error correction; it contains no msdfgen source code.
 
 * The nodegraph uses Karma's ST Derivatives node (kma_stderiv), part of
   SideFX Houdini, for antialiasing.

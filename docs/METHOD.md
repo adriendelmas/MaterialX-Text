@@ -19,6 +19,12 @@ same.
    signed distance in `<name>_sdf.exr` (one channel), and the metrics in
    `<name>.json` (advances, ink bounds, kerning from GPOS or kern, vertical
    metrics). Distances are in em, positive inside, clamped to +-0.25 em.
+   Two bakers write the same files: msdfgen (Viktor Chlumsky's native tool,
+   `bin/msdfgen.exe` on Windows, `mtlx_text.msdfgen`), fed the glyph contours
+   fontTools reads, about 25x faster and light on memory; and a numpy
+   reimplementation (`mtlx_text.msdf`), used when msdfgen is not found.
+   Measured on Microsoft Himalaya, 207 glyphs at 48 px/em: 26.5 s against
+   1.0 s, medians 0.001 texel apart on average (2026-10-15).
 2. **Layout** (on the CPU, `mtlx_text.layout`, one implementation for the
    node, the LOP and the SOP): advances, pair kerning, tracking, wrapping to
    a width at spaces, left / center / right / justify, font fallback (a
@@ -39,13 +45,13 @@ same.
    in half float (the viewport loads textures as 16-bit). Read with closest
    filtering, no mip levels.
 4. **Shader** (`build.py` writes the nodegraph, standard MaterialX nodes plus
-   Karma's ST Derivatives): the two lines whose cells bracket the point, one
-   table texel per candidate gives two candidate glyphs per line, each candidate's
-   MSDF is read through its per-letter transform, the union keeps the largest
-   distance (glyphs may overlap in both directions); ids, uv, word and the
-   round-corner distance come from the winner. Nine texture lookups per
-   point for the text (four table texels, four glyphs, the word), more for shadow (re-reads the bins at the shifted
-   point) and bevel (two more on the winner).
+   Karma's ST Derivatives): the two lines whose cells bracket the point, four
+   candidate glyphs on each (one table texel per candidate), each candidate's
+   MSDF read through its per-letter transform; the union keeps the largest
+   distance (glyphs may overlap in both directions), and ids, uv and word come
+   from the winner. Every lookup reads a candidate straight from the table:
+   the true distance (sdf_round) is read per candidate too, and the shadow
+   repeats the union at the shifted point.
 
 ## Driving it per primitive (the HDA contract)
 
@@ -141,8 +147,9 @@ the node's callbacks and the layout nodes; they are hidden on the node.
 * Atlas resolution: one texel is 1/Quality em (32 to 192 px/em). A ramp on
   sdf narrower than about two texels each side shows the texel grid (facets,
   beads along strokes thinner than two texels): raise Quality for close-ups,
-  and use sdf_round (true distance, no MSDF creases) for displacement. Baking
-  at 192 costs about 2.5 s per glyph: bake only the characters used.
+  and use sdf_round (true distance, no MSDF creases) for displacement. The
+  numpy baker costs about 2.5 s per glyph at 192 px/em; msdfgen a few
+  milliseconds.
 * Atlases have no mip levels (format 6): the shader antialiases from its own
   pixel footprint, and mip levels drew seams where a candidate's glyph
   changes. A node with an older atlas bakes it again on its next text edit.
@@ -158,14 +165,13 @@ the node's callbacks and the layout nodes; they are hidden on the node.
   syllable) and at U+200B (zero width space: no ink, no advance), which cuts
   a syllable in two for word_id without changing the drawing.
 * The Houdini node is one shader of the nodedef (`mtlx2hda`): a value change
-  re-cooks the material library in about 9 ms. Houdini VK does not draw it,
-  and cannot: it ignores every custom MaterialX nodedef, even a trivial one,
-  whether its library is on HOUDINI_PATH or on PXR_MTLX_PLUGIN_SEARCH_PATHS
-  (tested 2026-10-14). Use a Karma viewport. (A subnet of SideFX's VOPs was
-  tried: VK drew it with artifacts, but each change cost about 1 s of USD
-  translation; dropped 2026-10-14.)
-* Cycles needs hdCycles patches 0137 (libraries on HOUDINI_PATH) and 0139
-  (ST Derivatives).
+  re-cooks the material library in about 9 ms. Houdini's VK viewport does not
+  draw it, and cannot: it ignores every custom MaterialX nodedef, whether its
+  library is on HOUDINI_PATH or on PXR_MTLX_PLUGIN_SEARCH_PATHS. Use a Karma
+  viewport.
+* Cycles: [cycles-for-houdini](https://github.com/adriendelmas/cycles-for-houdini)
+  with its patches 0137 (MaterialX libraries on HOUDINI_PATH) and 0139 (ST
+  Derivatives).
 * Karma XPU compiles each shader network once (about 13 s for this node,
   cold, 2026-10-11), then keeps it in its disk cache; changing a value never
   recompiles, wiring another output does (once). What makes the compile
@@ -180,10 +186,12 @@ the node's callbacks and the layout nodes; they are hidden on the node.
 | `build.py` | `hython build.py`: writes the nodegraph, `karmaNodeGraphs.json`, the three HDAs |
 | `materialx/libraries/mtlx_text/` | `mtlx_text.mtlx` (generated), `mtlx_text_karma.mtlx` (Karma's ST Derivatives) |
 | `python3.13libs/mtlx_text/` | fonts, msdf, atlas, layout, lop, sop, hda builders, callbacks; `hython -m mtlx_text bake/fonts/table` (`table`: a text table and the node's input values as JSON, for a .mtlx written without Houdini's node; `examples/minimal/`) |
-| `otls/` | `mtlx_text.hda` (the node: one shader of the nodedef, from `mtlx2hda`), `mtlx_text_layout_lop.hda`, `mtlx_text_layout.hda` (SOP) |
+| `otls/` | built locally by `hython build.py`, with your own Houdini licence: `mtlx_text.hda` (the node: one shader of the nodedef, from `mtlx2hda`), `mtlx_text_layout_lop.hda`, `mtlx_text_layout.hda` (SOP) |
+| `bin/` | `msdfgen.exe` (Windows), the native atlas baker; see NOTICE |
 | `tests/` | `test_layout.py`, `test_render.py`, `test_lop.py`, `test_features.py`, `mtlx_eval.py` (reference evaluator) |
-| `docs/PLAN.md` | why it is built this way: the measurements behind each choice |
+| `docs/DESIGN.md` | why it is built this way: the measurements behind each choice |
 
 Environment: `MTLX_TEXT_CACHE` (atlas and node tables; default
-`$HIP/tex/mtlx_text`), `MTLX_TEXT_FONT_PATH` (more font folders). Cycles
-needs hdCycles with the custom-library patch (2026-10-11) to see the node.
+`$HIP/tex/mtlx_text`), `MTLX_TEXT_FONT_PATH` (more font folders),
+`MTLX_TEXT_MSDF` (`auto`, `numpy` or `msdfgen`: the atlas baker),
+`MTLX_TEXT_MSDFGEN` (path of a msdfgen executable, else `bin/` then PATH).

@@ -1,0 +1,64 @@
+# Design notes
+
+Why MaterialX Text is built the way it is: the constraints found by
+measurement on Houdini 22.0 (Karma CPU / XPU, Cycles through
+[cycles-for-houdini](https://github.com/adriendelmas/cycles-for-houdini)),
+and the design they led to. [METHOD.md](METHOD.md) is the reference for using it.
+
+## Constraints
+
+- **Karma XPU compile time grows with chained texture lookups** (a lookup
+  whose coordinates come from another lookup): 6 chained atlas lookups
+  compiled in 180 s, 8 independent ones in 15 s, 1000 arithmetic nodes in
+  12 s. So no search in the shader: the text table holds, per bin of the
+  line, the few glyphs that can reach it, and every glyph is read straight
+  from the table.
+- **Karma XPU compiles each primvar read** (about 2 s each): per-primitive
+  settings are written into the text table by the layout node instead of
+  being read as primvars.
+- **Cycles has no vector4**, and an RGBA image reaches it through its colour
+  only. Atlases and tables are RGB (vector3) or one channel.
+- **Cycles' SVM stack is 255 floats**: the text cannot live in primvars, and
+  the running union of glyphs carries few values.
+- **A texture coordinate that jumps between neighbouring pixels widens the
+  texture filter** (mip levels on CPU, filter width on XPU) and draws a faint
+  seam. So the atlases have no mip levels, a glyph keeps one slot of the
+  table in every bin it reaches, and the even line of text always comes first.
+- **Houdini's VK viewport** ignores custom MaterialX nodedefs, shrinks
+  textures wider than 2048 texels and reads a one-pixel-high texture as zeros.
+  The table is folded into rows of 2048 texels and at least 4 rows high; the
+  node is viewed in a Karma viewport.
+- **Karma's smoothstep returns 0 when low == high**: the edge half width is
+  kept above 1e-4 em.
+- **fontTools 4.55, shipped with Houdini 22.0, lacks `_h_e_a_d.py`**: a copy
+  is registered when the import fails.
+
+## As built
+
+- **Units**: 1 em = the font size. The node's `size` is 1 em in texture
+  coordinates.
+- **Atlas**: every glyph of a font set as a multi-channel signed distance
+  field (RGB EXR, read as vector3) and its true signed distance (one-channel
+  EXR), in em, clamped to +-0.25 em, no mip levels; a JSON of metrics
+  (advances, ink bounds, GPOS / kern kerning, vertical metrics). Baked by
+  msdfgen (native, bundled for Windows) or by a numpy reimplementation.
+- **Layout** (Python, one implementation for the node, the LOP and the SOP):
+  advances, kerning, tracking, word wrapping, alignment, font fallback.
+- **Text table**: per line of text, 512 bins of 1/8 em, up to four glyphs per
+  bin (x offset, atlas glyph, index in the text) and their words, then the
+  text's per-text settings; folded into rows of 2048 texels.
+- **Shader** (one MaterialX nodegraph of standard nodes, plus Karma's ST
+  Derivatives for antialiasing): the two lines whose cells bracket the point,
+  four candidate glyphs on each, read through their per-letter transforms;
+  a running union keeps the largest distance and the winner's ids.
+- **Houdini node**: one shader of the nodedef: a value change re-cooks in
+  about 9 ms. A subnet of SideFX's MaterialX VOPs re-translated ~1100 nodes
+  to USD on every change (about 1 s) and was dropped.
+- **Karma XPU**: each wired output compiles once (10 to 25 s cold), then
+  stays in the disk cache; a value change never recompiles.
+
+## Verification
+
+`tests/` renders with Karma CPU, Karma XPU and Cycles and compares every
+pixel with a numpy evaluation of the same nodegraph (`tests/mtlx_eval.py`):
+text from the node and from primvars, the LOP, every output and effect.
