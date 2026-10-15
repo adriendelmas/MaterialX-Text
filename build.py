@@ -1,8 +1,8 @@
 """Build the MtlX Text node: hython build.py
 
 1. Writes materialx/libraries/mtlx_text/mtlx_text.mtlx: the nodedef and its
-   nodegraph, standard MaterialX nodes only (plus Karma's kma_stderiv, declared
-   in mtlx_text_karma.mtlx), generated here through the MaterialX API.
+   nodegraph, standard MaterialX nodes only, generated here through the
+   MaterialX API.
 2. Runs SideFX's mtlx2karma.py -> karmaNodeGraphs.json (Karma CPU/XPU load it
    from HOUDINI_PATH).
 3. Runs SideFX's mtlx2hda.py -> otls/mtlx_text.hda, then lays out the HDA's
@@ -159,7 +159,7 @@ class Graph:
 DEBUG = os.environ.get("MTLX_TEXT_DEBUG") == "1"
 SWITCH_TREE = os.environ.get("MTLX_TEXT_SWITCH_TREE") == "1"
 # optional parts of the graph (all by default); a part left out keeps its outputs, at 0
-FEATURES = set(os.environ.get("MTLX_TEXT_FEATURES", "aa,jitter,shadow").split(","))
+FEATURES = set(os.environ.get("MTLX_TEXT_FEATURES", "jitter,shadow").split(","))
 
 
 def build_graph():
@@ -240,7 +240,6 @@ def build_graph():
     # look
     weight = P("weight", "float", "0", uiname="Weight (em)", uisoftmin="-0.1", uisoftmax="0.1")
     softness = P("softness", "float", "0", uiname="Edge Softness (em)", uisoftmin="0", uisoftmax="0.1")
-    auto_aa = P("auto_aa", "float", "1", uiname="Pixel Antialiasing", uisoftmin="0", uisoftmax="2")
     fg = P("fg", "color3", "1, 1, 1", uiname="Text Color")
     bg = P("bg", "color3", "0, 0, 0", uiname="Background Color")
     # per-letter variation
@@ -283,16 +282,6 @@ def build_graph():
     block_h = G.add(G.sub(ascender, descender), G.mul(G.sub(n_lines, 1.0), leading))
     y = G.add(G.mul(yup, -1.0), G.mul(block_h, vfac))       # y down from the block top
     pivot = G.mul(G.add(ascender, descender), 0.5)          # glyph rotation / scale centre above the baseline
-
-    # on-screen size of the point in em (Karma: ST Derivatives; elsewhere 0)
-    if "aa" in FEATURES:
-        der = G.n("kma_stderiv", "multioutput", "deriv",
-                  input=G.n("combine2", "vector2", in1=px0, in2=py0))
-        fp = G.mul(G.max(G.n("magnitude", "float", **{"in": G.out(der, "derivS", "vector2")}),
-                         G.n("magnitude", "float", **{"in": G.out(der, "derivT", "vector2")})),
-                   G.out(der, "derivScale"))
-    else:
-        fp = G.mul(auto_aa, 0.0)
 
     # rows whose cell centres bracket y; cell of row r: baseline b_r = asc + r * leading
     c0 = G.add(G.sub(ascender, G.mul(cell, 0.5)), baseline)
@@ -431,9 +420,8 @@ def build_graph():
         return best["d"]
 
     sdf = G.add(win["d"], weight)
-    # edge half width: softness plus half a pixel; never 0, Karma's smoothstep
-    # returns 0 when low == high
-    hw = G.max(G.add(softness, G.mul(G.mul(auto_aa, fp), 0.5)), 1.0e-4)
+    # edge half width: never 0, Karma's smoothstep returns 0 when low == high
+    hw = G.max(softness, 1.0e-4)
 
     def step(d, w):
         return G.n("smoothstep", "float", **{"in": d, "low": G.mul(w, -1.0), "high": w})
@@ -455,7 +443,7 @@ def build_graph():
         so = G.n("separate2", "multioutput", **{"in": s_offset})
         sx, sy = G.sub(x, G.out(so, "outx")), G.sub(y, G.out(so, "outy"))
         s_sdf = G.add(union_at(sx, sy), weight)
-        shadow = step(s_sdf, G.max(G.add(s_soft, G.mul(G.mul(auto_aa, fp), 0.5)), 1.0e-4))
+        shadow = step(s_sdf, G.max(s_soft, 1.0e-4))
     else:
         shadow = G.mul(s_soft, 0.0)
 
@@ -475,7 +463,6 @@ def build_graph():
     G.output("outline", "float", outline)
     G.output("shadow", "float", shadow)
     G.output("bevel_height", "float", b_h)
-    G.output("footprint", "float", fp)
     return doc, len(ng.getNodes())
 
 
@@ -485,9 +472,6 @@ def write_mtlx():
     doc, count = build_graph()
     vdoc = doc.copy()
     vdoc.importLibrary(stdlib)          # validate against the standard library, write without it
-    karma = mx.createDocument()
-    mx.readFromXmlFile(karma, os.path.join(LIB_DIR, "mtlx_text_karma.mtlx"))
-    vdoc.importLibrary(karma)
     ok, msg = vdoc.validate()
     if not ok:
         raise RuntimeError("invalid MaterialX document:\n" + msg)

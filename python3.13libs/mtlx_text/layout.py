@@ -48,7 +48,7 @@ BIN_TEXELS = TEXELS * BINS  # texels of the bins
 # shader inputs a text may set for itself, see the docstring
 STYLE = (("origin", (0.05, 0.9)), ("size", (0.1,)), ("aspect", (1.0,)), ("rotate", (0.0,)),
          ("slant", (0.0,)), ("leading", (1.2,)), ("weight", (0.0,)), ("softness", (0.0,)),
-         ("auto_aa", (1.0,)), ("fg", (1.0, 1.0, 1.0)), ("bg", (0.0, 0.0, 0.0)), ("seed", (0.0,)),
+         ("fg", (1.0, 1.0, 1.0)), ("bg", (0.0, 0.0, 0.0)), ("seed", (0.0,)),
          ("jitter_baseline", (0.0,)), ("jitter_rotate", (0.0,)), ("jitter_scale", (0.0,)), ("drop", (0.0,)),
          ("outline_width", (0.03,)), ("outline_offset", (0.0,)), ("shadow_offset", (0.04, 0.04)),
          ("shadow_softness", (0.03,)), ("bevel_width", (0.04,)))   # (input, default)

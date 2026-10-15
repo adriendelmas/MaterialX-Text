@@ -12,7 +12,7 @@ IN_TEXT_MODE = "{ text_mode != text }"   # a menu condition compares its token
 # the shader's inputs by tab (the Text tab adds them after the text and its layout)
 TABS = {
     "Text": ("leading", "valign", "origin", "size", "aspect", "rotate", "slant"),
-    "Look": ("fg", "bg", "weight", "softness", "auto_aa"),
+    "Look": ("fg", "bg", "weight", "softness"),
     "Variation": ("seed", "jitter_baseline", "jitter_rotate", "jitter_scale", "drop"),
     "Effects": ("corners", "outline_width", "outline_offset", "shadow_offset", "shadow_softness",
                 "bevel_width"),
@@ -56,8 +56,8 @@ UV units. Set *Aspect* to the surface's height / width ratio when its UVs
 span a non-square surface. *Leading* is the line pitch, *Rotate* and *Slant*
 turn and italicise the block.
 
-*Edge Softness* widens the edge; *Pixel Antialiasing* adds half a pixel to it
-(Karma only). *Weight* makes the text bolder (positive) or thinner.
+*Edge Softness* widens the edge (antialiasing otherwise comes from the
+render samples). *Weight* makes the text bolder (positive) or thinner.
 
 Seed, Baseline Jitter, Rotate Jitter, Scale Jitter and Missing Letters vary
 each letter at random.
@@ -92,8 +92,6 @@ outline, shadow:
     The outline band and the drop shadow.
 bevel_height:
     The bevel profile: 0 at the edge, 1 at Bevel Width inside.
-footprint:
-    The size of a pixel in em (Karma).
 
 The full reference, including the contract for an HDA driving the text from
 primvars, is `docs/METHOD.md` in the mtlx_text folder.

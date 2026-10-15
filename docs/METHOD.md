@@ -83,7 +83,7 @@ font list), `text_width` (float em, 0 = no wrapping), `text_align` (string
 Look and placement per prim: every input below can be overridden by a primvar
 `text_<input>` (an attribute in SOPs) of the same type (float, float2 for origin and shadow_offset,
 color3 for fg / bg) - `text_size`, `text_origin`, `text_rotate`, `text_slant`,
-`text_leading`, `text_aspect`, `text_weight`, `text_softness`, `text_auto_aa`,
+`text_leading`, `text_aspect`, `text_weight`, `text_softness`,
 `text_fg`, `text_bg`, `text_seed`, `text_jitter_baseline`,
 `text_jitter_rotate`, `text_jitter_scale`, `text_drop`, `text_outline_width`,
 `text_outline_offset`, `text_shadow_offset`, `text_shadow_softness`,
@@ -111,7 +111,7 @@ node writes a one-text table in the atlas cache).
 | leading | line pitch in em (1.2 by default; down to about 0.6, lines overlap) |
 | valign | vertical anchor: top, middle, bottom of the block |
 | weight | moves the edge, em (+ bolder) |
-| softness, auto_aa | edge half width in em, plus auto_aa x half a pixel (Karma only: Cycles has no pixel footprint) |
+| softness | edge half width in em (antialiasing otherwise comes from the render samples) |
 | fg, bg | colours of the color output |
 | seed, jitter_baseline (em), jitter_rotate (degrees), jitter_scale (fraction), drop (0..1) | per-letter random variation |
 | corners | effects from the sharp (MSDF) or round (true) distance |
@@ -139,7 +139,6 @@ the node's callbacks and the layout nodes; they are hidden on the node.
 | outline | float | the outline band |
 | shadow | float | the drop shadow (not masked by the text) |
 | bevel_height | float | 0 at the edge to 1 at bevel_width inside |
-| footprint | float | the pixel size in em (Karma) |
 
 ## Limits
 
@@ -154,8 +153,13 @@ the node's callbacks and the layout nodes; they are hidden on the node.
   and use sdf_round (true distance, no MSDF creases) for displacement. The
   numpy baker costs about 2.5 s per glyph at 192 px/em; msdfgen a few
   milliseconds.
-* Atlases have no mip levels (format 6): the shader antialiases from its own
-  pixel footprint, and mip levels drew seams where a candidate's glyph
+* No pixel-footprint antialiasing: antialiasing comes from the render
+  samples and *Edge Softness* (see DESIGN.md, Abandoned).
+* Karma XPU reporting a critical "Invalid value" on its OptiX device, then
+  hanging: check the free space of the system drive (temp and compile cache)
+  before suspecting the shader.
+* Atlases have no mip levels (format 6): antialiasing comes from the samples
+  and the edge softness, and mip levels drew seams where a candidate's glyph
   changes. A node with an older atlas bakes it again on its next text edit.
 * Leading below about 0.6 em or tracking below about -0.5 em: a third line
   or glyph would be needed and is not drawn.

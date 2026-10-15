@@ -21,7 +21,7 @@ nodes.*
   tracking, word wrapping to a width, left / center / right / justify, font
   fallback across a list of fonts.
 - **Sharp at any size**: multi-channel signed distance fields (MSDF) keep the
-  corners; pixel-footprint antialiasing in Karma. Atlases are baked by
+  corners. Atlases are baked by
   [msdfgen](https://github.com/Chlumsky/msdfgen) (bundled for Windows), or
   by a numpy fallback when it is not there.
 - **Overlapping letters**: up to four glyphs per 1/8 em along a line and
@@ -108,8 +108,7 @@ contract for an HDA that drives it, every input and output, the limits.
   right-to-left, no Devanagari. Tibetan works with fonts that draw their marks
   in place.
 - Houdini's VK viewport does not draw it; use a Karma viewport.
-- Cycles has no pixel footprint: antialiasing comes from its samples, or from
-  *Edge Softness*.
+- Antialiasing comes from the render samples, or from *Edge Softness*.
 
 ## Tests
 

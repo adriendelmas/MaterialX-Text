@@ -47,8 +47,7 @@ and the design they led to. [METHOD.md](METHOD.md) is the reference for using it
 - **Text table**: per line of text, 512 bins of 1/8 em, up to four glyphs per
   bin (x offset, atlas glyph, index in the text) and their words, then the
   text's per-text settings; folded into rows of 2048 texels.
-- **Shader** (one MaterialX nodegraph of standard nodes, plus Karma's ST
-  Derivatives for antialiasing): the two lines whose cells bracket the point,
+- **Shader** (one MaterialX nodegraph of standard nodes): the two lines whose cells bracket the point,
   four candidate glyphs on each, read through their per-letter transforms;
   a running union keeps the largest distance and the winner's ids.
 - **Houdini node**: one shader of the nodedef: a value change re-cooks in
@@ -56,6 +55,48 @@ and the design they led to. [METHOD.md](METHOD.md) is the reference for using it
   to USD on every change (about 1 s) and was dropped.
 - **Karma XPU**: each wired output compiles once (10 to 25 s cold), then
   stays in the disk cache; a value change never recompiles.
+
+## Abandoned
+
+- **Pixel-footprint antialiasing** (dropped 2026-10-15: the render samples
+  and Edge Softness are enough, and it was Karma only). The edge was
+  widened by half a pixel, measured with Karma's ST Derivatives node
+  (`kma_stderiv`, implemented natively by Karma, with no MaterialX
+  definition in Houdini 22.0); it works on Karma CPU and XPU. Cycles never
+  had it. To rebuild it, declare the node for validation and for
+  mtlx2karma.py:
+
+  ```xml
+  <nodedef name="kma_stderiv_vector2" node="kma_stderiv" nodegroup="karma">
+    <input name="input" type="vector2" value="0, 0" />
+    <output name="derivS" type="vector2" />
+    <output name="derivT" type="vector2" />
+    <output name="derivScale" type="float" />
+  </nodedef>
+  ```
+
+  then, in `build.py`, an `auto_aa` input and the pixel size in em of the
+  point (px0, py0, before rotation):
+
+  ```python
+  der = G.n("kma_stderiv", "multioutput", "deriv",
+            input=G.n("combine2", "vector2", in1=px0, in2=py0))
+  fp = G.mul(G.max(G.n("magnitude", "float", **{"in": G.out(der, "derivS", "vector2")}),
+                   G.n("magnitude", "float", **{"in": G.out(der, "derivT", "vector2")})),
+             G.out(der, "derivScale"))
+  hw = G.max(G.add(softness, G.mul(G.mul(auto_aa, fp), 0.5)), 1.0e-4)
+  ```
+
+  The same half pixel was added to the shadow's softness, and `fp` was the
+  `footprint` output.
+
+## Pitfalls
+
+- **Karma XPU with a full system disk**: every new shader compile stops the
+  OptiX device ("Invalid value", then husk hangs) while scenes already in
+  the compile cache still render, so it looks like a shader bug. Check the
+  free space of the drive holding the temp and cache folders first
+  (2026-10-15).
 
 ## Verification
 

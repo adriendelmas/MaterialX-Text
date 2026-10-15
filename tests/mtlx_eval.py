@@ -169,9 +169,6 @@ class Evaluator:
             return v / np.maximum(np.sqrt((v * v).sum(-1, keepdims=True)), 1e-30)
         if c == "cellnoise3d":
             return cell_noise3(np.asarray(g("position"), dtype=float))
-        if c == "kma_stderiv":           # Karma only: no footprint here, like Cycles
-            z2 = np.zeros(np.shape(self.uv)[:-1] + (2,))
-            return {"derivS": z2, "derivT": z2, "derivScale": np.zeros(np.shape(self.uv)[:-1])}
         if c == "combine2":
             a, b = np.broadcast_arrays(g("in1"), g("in2"))
             return np.stack([a, b], -1)

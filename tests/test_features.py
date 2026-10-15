@@ -3,8 +3,7 @@
 One grid, one text, every per-letter variation and effect on. Each output of
 the node is rendered alone (float EXR) and compared, pixel by pixel, with the
 reference evaluator at the rendered texture coordinates, on pixels away from
-edges (where Karma's pixel-footprint antialiasing, absent from the evaluator
-and from Cycles, makes no difference).
+edges (where the render samples' antialiasing makes no difference).
 """
 import os
 import subprocess
@@ -62,8 +61,7 @@ mtlx_text.on_fonts(t)
 for name, value in (("size", 0.11), ("aspect", 2.0), ("leading", 1.3), ("seed", 7.0),
                     ("jitter_baseline", 0.06), ("jitter_rotate", 12.0), ("jitter_scale", 0.15), ("drop", 0.15),
                     ("outline_width", 0.05), ("outline_offset", 0.03), ("shadow_softness", 0.04),
-                    ("bevel_width", 0.05), ("rotate", 6.0), ("slant", 0.15),
-                    ("auto_aa", 0.0)):     # the evaluator has no pixel footprint
+                    ("bevel_width", 0.05), ("rotate", 6.0), ("slant", 0.15)):
     t.parm(name).set(value)
 t.parmTuple("origin").set((0.5 - 0.11 * 4.5, 0.85))
 t.parmTuple("shadow_offset").set((0.06, 0.06))
