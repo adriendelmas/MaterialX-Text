@@ -158,6 +158,11 @@ the node's callbacks and the layout nodes; they are hidden on the node.
 * Karma XPU reporting a critical "Invalid value" on its OptiX device, then
   hanging: check the free space of the system drive (temp and compile cache)
   before suspecting the shader.
+* Karma XPU compile time: one text per prim (several lines are fine) keeps
+  `text_uv` / `text_lines` constant and the shader compiles about six times
+  faster than with several texts per prim. Render with the tables written,
+  and use `<UDIM>` in the table path only when several Layout nodes feed one
+  material (see DESIGN.md, Pitfalls).
 * Atlases have no mip levels (format 6): antialiasing comes from the samples
   and the edge softness, and mip levels drew seams where a candidate's glyph
   changes. A node with an older atlas bakes it again on its next text edit.

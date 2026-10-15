@@ -97,6 +97,19 @@ and the design they led to. [METHOD.md](METHOD.md) is the reference for using it
   the compile cache still render, so it looks like a shader bug. Check the
   free space of the drive holding the temp and cache folders first
   (2026-10-15).
+- **Karma XPU compile time and the text primvars** (measured cold, OptiX
+  and VEX code caches private, 2026-10-16): with `text_uv` / `text_lines`
+  constant on a prim, XPU specialises the shader on them and the text
+  compiles in about 15 s; with one value per face (uniform or faceVarying,
+  several texts on one prim) the same shader takes about 95 s. A missing
+  table file costs as much as per-face primvars; `<UDIM>` in the table path
+  about 45 % more than a plain tile. XPU does not specialise on parameter
+  values: a uniform switch does not drop code. At build time, leaving out
+  jitter halves the per-face case (43 s); fewer slots cut it too.
+- **Measuring XPU compiles**: a mesh outside the camera never compiles its
+  material, and the VEX code cache (`$HOUDINI_TEMP_DIR/VEX_CodeCache`)
+  survives a fresh `OPTIX_CACHE_PATH`; `husk -V 6a` prints the compile
+  count and the longest compile.
 
 ## Verification
 
