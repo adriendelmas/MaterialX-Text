@@ -24,6 +24,8 @@ import numpy as np
 
 from . import msdf
 
+# Houdini's GUI has no console: without this flag Windows opens one per msdfgen run
+NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 PKG_BIN = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "bin")
 
 
@@ -80,7 +82,8 @@ def _glyph(exe, contours, cell_px, px_per_em, tx, ty, rng, workdir, k):
     subprocess.run([exe, "mtsdf", "-shapedesc", src, "-dimensions", str(cell_px), str(cell_px),
                     "-scale", repr(float(px_per_em)), "-translate", repr(float(tx)), repr(float(ty)),
                     "-range", repr(2.0 * rng), "-format", "binfloat", "-o", dst],
-                   check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+                   check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
+                   creationflags=NO_WINDOW)
     v = np.fromfile(dst, dtype="<f4").reshape(cell_px, cell_px, 4)    # rows from the bottom
     d = (v - 0.5) * (2.0 * rng)
     # the numpy baker's corrections, so both backends write one contract
