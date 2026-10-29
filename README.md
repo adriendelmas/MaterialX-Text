@@ -40,7 +40,7 @@ nodes.*
 - Houdini 22.0 (the Python package lives in `python3.13libs`).
 - Karma CPU / XPU. Cycles through
   [cycles-for-houdini](https://github.com/adriendelmas/cycles-for-houdini)
-  (patches 0137 and 0139).
+  (patch 0137).
 - Font files of your own (`.ttf`, `.otf`, `.ttc`). No font is distributed.
 - Optional on Linux / macOS: a `msdfgen` executable on `PATH` (or set
   `MTLX_TEXT_MSDFGEN`) for fast bakes; without it the numpy baker is used.
@@ -90,7 +90,8 @@ Layout** (LOP) after the assignment and point it at the material. A SOP
 version does the same in SOPs.
 
 Without Houdini's node, from a plain `.mtlx`: see
-[examples/minimal](examples/minimal), and the command line:
+[examples/minimal](examples/minimal); from a USD written with pxr (labels on
+grids): [examples/pxr_labels](examples/pxr_labels); and the command line:
 
 ```bash
 hython -m mtlx_text bake --font a.ttf [--font b.otf] [--charset western] [--quality 48]

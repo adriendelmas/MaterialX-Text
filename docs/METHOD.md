@@ -48,8 +48,8 @@ same.
    in the text (inked glyphs, reading order), -1 = none. Every value is exact
    in half float (the viewport loads textures as 16-bit). Read with closest
    filtering, no mip levels.
-4. **Shader** (`build.py` writes the nodegraph, standard MaterialX nodes plus
-   Karma's ST Derivatives): the two lines whose cells bracket the point, four
+4. **Shader** (`build.py` writes the nodegraph, standard MaterialX nodes
+   only): the two lines whose cells bracket the point, four
    candidate glyphs on each (one table texel per candidate), each candidate's
    MSDF read through its per-letter transform; the union keeps the largest
    distance (glyphs may overlap in both directions), and ids, uv and word come
@@ -183,8 +183,7 @@ the node's callbacks and the layout nodes; they are hidden on the node.
   library is on HOUDINI_PATH or on PXR_MTLX_PLUGIN_SEARCH_PATHS. Use a Karma
   viewport.
 * Cycles: [cycles-for-houdini](https://github.com/adriendelmas/cycles-for-houdini)
-  with its patches 0137 (MaterialX libraries on HOUDINI_PATH) and 0139 (ST
-  Derivatives).
+  with its patch 0137 (MaterialX libraries on HOUDINI_PATH).
 * Karma XPU compiles each shader network once (about 13 s for this node,
   cold, 2026-10-11), then keeps it in its disk cache; changing a value never
   recompiles, wiring another output does (once). What makes the compile
@@ -197,8 +196,9 @@ the node's callbacks and the layout nodes; they are hidden on the node.
 | Path | Role |
 |---|---|
 | `build.py` | `hython build.py`: writes the nodegraph, `karmaNodeGraphs.json`, the three HDAs |
-| `materialx/libraries/mtlx_text/` | `mtlx_text.mtlx` (generated), `mtlx_text_karma.mtlx` (Karma's ST Derivatives) |
+| `materialx/libraries/mtlx_text/` | `mtlx_text.mtlx` (generated) |
 | `python3.13libs/mtlx_text/` | fonts, msdf, atlas, layout, lop, sop, hda builders, callbacks; `hython -m mtlx_text bake/fonts/table` (`table`: a text table and the node's input values as JSON, for a .mtlx written without Houdini's node; `examples/minimal/`) |
+| `examples/pxr_labels/` | `make_labels.py`: labels on grids from plain pxr (one table, one material, one prim per label with constant `text_uv` / `text_lines`), rendered by Karma CPU / XPU and Cycles |
 | `otls/` | built locally by `hython build.py`, with your own Houdini licence: `mtlx_text.hda` (the node: one shader of the nodedef, from `mtlx2hda`), `mtlx_text_layout_lop.hda`, `mtlx_text_layout.hda` (SOP) |
 | `bin/` | `msdfgen.exe` (Windows), the native atlas baker; see NOTICE |
 | `tests/` | `test_layout.py`, `test_render.py`, `test_lop.py`, `test_features.py`, `mtlx_eval.py` (reference evaluator) |
